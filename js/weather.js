@@ -31,7 +31,7 @@ async function fetchWeatherForLocation(lat, lng) {
     const emoji = getWeatherEmoji(weather.weather[0].main);
 
     weatherDiv.innerHTML = `
-      <div class="card shadow-sm p-3" style="border-left: 4px solid #1A73A7;">
+      <div class="card shadow-sm p-3" style="border-left: 4px solid #145b85;">
         <h6 class="fw-bold mb-2">🌤 Current Weather at this Location</h6>
         <div class="row text-center">
           <div class="col-3">
