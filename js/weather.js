@@ -1,4 +1,4 @@
-const WEATHER_API_KEY = 'YOUR_API_KEY_HERE';
+const WEATHER_API_KEY = 'e73ac511d24c02b05a9e9c3de11b410f';
 
 async function fetchWeatherForLocation(lat, lng) {
   const weatherDiv = document.getElementById('weatherInfo');
