@@ -10,7 +10,7 @@ const CATEGORY_COLORS = {
   'Manmade': '#607d8b'
 };
 
-const map = L.map('map').setView([20, 0], 2);
+const map = L.map('map').setView([15, -61], 5);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -18,6 +18,11 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 const legend = L.control({ position: 'bottomright' });
+
+function isCaribbeanPoint(lat, lng) {
+  return lat >= 9 && lat <= 25 && lng >= -89 && lng <= -55;
+}
+
 
 legend.onAdd = function () {
   const div = L.DomUtil.create('div', 'map-legend');
