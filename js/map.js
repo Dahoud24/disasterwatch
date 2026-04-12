@@ -55,7 +55,7 @@ async function loadDisasters() {
     '<div class="alert alert-info">Loading disaster data from NASA...</div>';
 
   try {
-    const response = await fetch('https://eonet.gsfc.nasa.gov/api/v3/events?status=all&days=14&limit=300');
+    const response = await fetch('https://eonet.gsfc.nasa.gov/api/v3/events?status=all&days=30&limit=400');
 
     if (!response.ok) {
       throw new Error('Failed to fetch NASA EONET data');
@@ -71,11 +71,7 @@ async function loadDisasters() {
       return;
     }
 
-    document.getElementById('eventInfo').innerHTML =
-      '<div class="alert alert-success">Loaded <strong>' +
-      data.events.length +
-      '</strong> active disaster events. Click a marker for details.</div>';
-
+   
     data.events.forEach(function (event) {
       plotEvent(event);
     });
