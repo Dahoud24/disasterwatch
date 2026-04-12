@@ -1,20 +1,13 @@
-const CHART_COLORS = [
-  '#e74c3c',
-  '#8e44ad',
-  '#e67e22',
-  '#2980b9',
-  '#c0392b',
-  '#00bcd4',
-  '#795548',
-  '#f39c12',
-  '#607d8b',
-  '#2ecc71',
-  '#34495e'
-];
+// js/charts.js
+
+const TREND_DAYS = 30;
 
 async function loadCharts() {
   try {
-    const response = await fetch('https://eonet.gsfc.nasa.gov/api/v3/events?status=all&limit=500');
+    const response = await fetch(
+      `https://eonet.gsfc.nasa.gov/api/v3/events?status=all&days=${TREND_DAYS}&limit=500`
+    );
+
     if (!response.ok) {
       throw new Error('Failed to fetch chart data');
     }
@@ -22,20 +15,31 @@ async function loadCharts() {
     const data = await response.json();
     const events = Array.isArray(data.events) ? data.events : [];
 
-    document.getElementById('chartsLoading').classList.add('d-none');
-    document.getElementById('chartsContent').classList.remove('d-none');
+    const loading = document.getElementById('chartsLoading');
+    const content = document.getElementById('chartsContent');
 
-    buildCategoryChart(events);
-    buildMonthChart(events);
+    if (loading) {
+      loading.classList.add('d-none');
+    }
+
+    if (content) {
+      content.classList.remove('d-none');
+    }
+
+    buildPieChart(events);
     buildStatsRow(events);
   } catch (error) {
-    document.getElementById('chartsLoading').innerHTML =
-      '<div class="alert alert-danger">Could not load chart data. Please refresh the page.</div>';
+    const loading = document.getElementById('chartsLoading');
+    if (loading) {
+      loading.innerHTML =
+        '<div class="alert alert-danger">Could not load chart data. Please refresh the page.</div>';
+    }
+
     console.error('Charts fetch error:', error);
   }
 }
 
-function buildCategoryChart(events) {
+function buildPieChart(events) {
   const counts = {};
 
   events.forEach(function (event) {
@@ -46,101 +50,46 @@ function buildCategoryChart(events) {
     counts[category] = (counts[category] || 0) + 1;
   });
 
-  const sorted = Object.entries(counts).sort(function (a, b) {
-    return b[1] - a[1];
-  });
+  const chartData = Object.entries(counts)
+    .sort(function (a, b) {
+      return b[1] - a[1];
+    })
+    .map(function ([name, value]) {
+      return {
+        name: name,
+        y: value
+      };
+    });
 
-  const labels = sorted.map(function (item) {
-    return item[0];
-  });
-
-  const values = sorted.map(function (item) {
-    return item[1];
-  });
-
-  new Chart(document.getElementById('categoryChart'), {
-    type: 'doughnut',
-    data: {
-      labels: labels,
-      datasets: [
-        {
-          data: values,
-          backgroundColor: CHART_COLORS,
-          borderWidth: 2,
-          borderColor: '#fff'
-        }
-      ]
+  Highcharts.chart('pieChartContainer', {
+    chart: {
+      type: 'pie'
     },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: {
-            font: { size: 11 }
-          }
-        },
-        tooltip: {
-          callbacks: {
-            label: function (ctx) {
-              const total = ctx.dataset.data.reduce(function (a, b) {
-                return a + b;
-              }, 0);
-              const pct = total ? Math.round((ctx.parsed / total) * 100) : 0;
-              return ctx.label + ': ' + ctx.parsed + ' events (' + pct + '%)';
-            }
-          }
+    title: {
+      text: 'Disaster Distribution (Past 30 Days)'
+    },
+    tooltip: {
+      pointFormat: '<b>{point.y} events</b> ({point.percentage:.1f}%)'
+    },
+    plotOptions: {
+      pie: {
+        allowPointSelect: true,
+        cursor: 'pointer',
+        dataLabels: {
+          enabled: true,
+          format: '<b>{point.name}</b>: {point.percentage:.1f}%'
         }
       }
-    }
-  });
-}
-
-function buildMonthChart(events) {
-  const currentYear = new Date().getFullYear();
-  const months = Array(12).fill(0);
-
-  events.forEach(function (event) {
-    const dateStr = event.geometry && event.geometry[0]
-      ? event.geometry[0].date
-      : null;
-
-    if (!dateStr) return;
-
-    const date = new Date(dateStr);
-
-    if (date.getFullYear() === currentYear) {
-      months[date.getMonth()]++;
-    }
-  });
-
-  new Chart(document.getElementById('monthChart'), {
-    type: 'bar',
-    data: {
-      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-      datasets: [
-        {
-          label: 'Disaster Events in ' + currentYear,
-          data: months,
-          backgroundColor: '#1A73A7',
-          borderRadius: 5,
-          borderSkipped: false
-        }
-      ]
     },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            stepSize: 1
-          }
-        }
+    series: [
+      {
+        name: 'Events',
+        colorByPoint: true,
+        data: chartData
       }
+    ],
+    credits: {
+      enabled: false
     }
   });
 }
@@ -165,27 +114,26 @@ function buildStatsRow(events) {
 
   const topCategory = sortedCategories.length > 0 ? sortedCategories[0][0] : 'N/A';
 
-  const currentYear = new Date().getFullYear();
+  const openCount = events.filter(function (event) {
+    return event.closed === null || event.closed === undefined;
+  }).length;
 
-  const thisYearCount = events.filter(function (event) {
+  const todayCount = events.filter(function (event) {
     const dateStr = event.geometry && event.geometry[0]
       ? event.geometry[0].date
       : null;
 
     if (!dateStr) return false;
 
-    const date = new Date(dateStr);
-    return date.getFullYear() === currentYear;
-  }).length;
-
-  const openCount = events.filter(function (event) {
-    return event.closed === null || event.closed === undefined;
+    const today = new Date().toISOString().split('T')[0];
+    const eventDay = new Date(dateStr).toISOString().split('T')[0];
+    return today === eventDay;
   }).length;
 
   const stats = [
-    { number: events.length, label: 'Total Events (Last 500)' },
+    { number: events.length, label: 'Total Events (Past 30 Days)' },
     { number: openCount, label: 'Currently Active' },
-    { number: thisYearCount, label: 'Events This Year' },
+    { number: todayCount, label: 'Events Today' },
     { number: topCategory, label: 'Most Common Type' }
   ];
 
