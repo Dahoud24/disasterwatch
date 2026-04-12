@@ -1,3 +1,5 @@
+// js/map.js
+
 const CATEGORY_COLORS = {
   'Wildfires': '#e74c3c',
   'Severe Storms': '#8e44ad',
@@ -10,19 +12,29 @@ const CATEGORY_COLORS = {
   'Manmade': '#607d8b'
 };
 
-const map = L.map('map').setView([15, -61], 5);
+
+
+const worldBounds = [
+  [-85, -180],
+  [85, 180]
+];
+
+const map = L.map('map', {
+  minZoom: 2,
+  maxBounds: worldBounds,
+  maxBoundsViscosity: 0.5,
+  worldCopyJump: false
+}).setView([20, 0], 2);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  maxZoom: 18
+  maxZoom: 18,
+  noWrap: true
 }).addTo(map);
 
+map.attributionControl.setPrefix(false);
+
 const legend = L.control({ position: 'bottomright' });
-
-function isCaribbeanPoint(lat, lng) {
-  return lat >= 9 && lat <= 25 && lng >= -89 && lng <= -55;
-}
-
 
 legend.onAdd = function () {
   const div = L.DomUtil.create('div', 'map-legend');
@@ -37,12 +49,13 @@ legend.onAdd = function () {
 
 legend.addTo(map);
 
+
 async function loadDisasters() {
   document.getElementById('eventInfo').innerHTML =
     '<div class="alert alert-info">Loading disaster data from NASA...</div>';
 
   try {
-    const response = await fetch('https://eonet.gsfc.nasa.gov/api/v3/events?status=open&limit=200');
+    const response = await fetch('https://eonet.gsfc.nasa.gov/api/v3/events?status=all&days=14&limit=300');
 
     if (!response.ok) {
       throw new Error('Failed to fetch NASA EONET data');
@@ -122,7 +135,6 @@ function showEventInfo(event, lat, lng, color) {
     : 'Unknown date';
 
   const user = getLoggedInUser();
-  const sourceUrl = event.sources && event.sources[0] ? event.sources[0].url : '#';
 
   document.getElementById('eventInfo').innerHTML = `
     <div class="card shadow-sm p-3 mb-3">
@@ -134,10 +146,6 @@ function showEventInfo(event, lat, lng, color) {
       </div>
       <p class="mb-1"><strong>Date:</strong> ${dateStr}</p>
       <p class="mb-1"><strong>Coordinates:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
-      <p class="mb-2">
-        <strong>Source:</strong>
-        <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">View Official Source</a>
-      </p>
       <div id="bookmarkAction"></div>
     </div>
     <div id="weatherInfo"></div>
@@ -157,8 +165,7 @@ function showEventInfo(event, lat, lng, color) {
         category: category,
         date: dateStr,
         lat: lat,
-        lng: lng,
-        source: sourceUrl
+        lng: lng
       });
     });
 
