@@ -216,7 +216,7 @@ function renderDashboard() {
   }
 }
 
-// Make these available to inline onclick buttons and map.js
+
 window.bookmarkEvent = bookmarkEvent;
 window.deleteBookmark = deleteBookmark;
 window.saveNote = saveNote;
