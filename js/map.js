@@ -1,18 +1,12 @@
-// js/map.js
-
-const CATEGORY_COLORS = {
-  'Wildfires': '#e74c3c',
-  'Severe Storms': '#8e44ad',
-  'Earthquakes': '#e67e22',
-  'Floods': '#2980b9',
-  'Volcanoes': '#c0392b',
-  'Sea and Lake Ice': '#00bcd4',
-  'Landslides': '#795548',
-  'Drought': '#f39c12',
-  'Manmade': '#607d8b'
+const CATEGORY_ICONS = {
+  'Wildfires': 'images/markers/wildfire.png',
+  'Severe Storms': 'images/markers/storm.png',
+  'Earthquakes': 'images/markers/earthquake.png',
+  'Floods': 'images/markers/flood.png',
+  'Volcanoes': 'images/markers/volcano.png'
 };
 
-
+const ALLOWED_CATEGORIES = Object.keys(CATEGORY_ICONS);
 
 const worldBounds = [
   [-85, -180],
@@ -40,22 +34,29 @@ legend.onAdd = function () {
   const div = L.DomUtil.create('div', 'map-legend');
   div.innerHTML = '<strong>Categories</strong><br>';
 
-  for (const [name, color] of Object.entries(CATEGORY_COLORS)) {
-    div.innerHTML += '<span style="background:' + color + '"></span> ' + name + '<br>';
-  }
+  ALLOWED_CATEGORIES.forEach(function (category) {
+    const iconPath = CATEGORY_ICONS[category];
+    div.innerHTML += `
+      <div style="display:flex; align-items:center; margin-bottom:6px;">
+        <img src="${iconPath}" alt="${category}" style="width:18px; height:18px; margin-right:8px;">
+        <span>${category}</span>
+      </div>
+    `;
+  });
 
   return div;
 };
 
 legend.addTo(map);
 
-
 async function loadDisasters() {
   document.getElementById('eventInfo').innerHTML =
     '<div class="alert alert-info">Loading disaster data from NASA...</div>';
 
   try {
-    const response = await fetch('https://eonet.gsfc.nasa.gov/api/v3/events?status=all&days=30&limit=400');
+    const response = await fetch(
+      'https://eonet.gsfc.nasa.gov/api/v3/events?status=all&days=30&limit=400'
+    );
 
     if (!response.ok) {
       throw new Error('Failed to fetch NASA EONET data');
@@ -67,11 +68,10 @@ async function loadDisasters() {
 
     if (!data.events || data.events.length === 0) {
       document.getElementById('eventInfo').innerHTML =
-        '<div class="alert alert-warning">No active events found.</div>';
+        '<div class="alert alert-warning">No disaster events found.</div>';
       return;
     }
 
-   
     data.events.forEach(function (event) {
       plotEvent(event);
     });
@@ -86,7 +86,6 @@ function plotEvent(event) {
   if (!event.geometry || event.geometry.length === 0) return;
 
   const geo = event.geometry[event.geometry.length - 1];
-
   if (geo.type !== 'Point') return;
 
   const lng = geo.coordinates[0];
@@ -96,28 +95,30 @@ function plotEvent(event) {
     ? event.categories[0].title
     : 'Unknown';
 
-  const color = CATEGORY_COLORS[category] || '#999999';
+  if (!ALLOWED_CATEGORIES.includes(category)) return;
 
-  const marker = L.circleMarker([lat, lng], {
-    radius: 9,
-    color: color,
-    fillColor: color,
-    fillOpacity: 0.65,
-    weight: 2
-  }).addTo(map);
+  const iconUrl = CATEGORY_ICONS[category];
 
-  marker.bindTooltip(event.title, { permanent: false, direction: 'top' });
+  const icon = L.icon({
+    iconUrl: iconUrl,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
+  });
+
+  const marker = L.marker([lat, lng], { icon: icon }).addTo(map);
+
+  marker.bindTooltip(event.title, {
+    permanent: false,
+    direction: 'top'
+  });
 
   marker.on('click', function () {
-    showEventInfo(event, lat, lng, color);
+    showEventInfo(event, lat, lng, category);
   });
 }
 
-function showEventInfo(event, lat, lng, color) {
-  const category = event.categories && event.categories[0]
-    ? event.categories[0].title
-    : 'Unknown';
-
+function showEventInfo(event, lat, lng, category) {
   const rawDate = event.geometry && event.geometry[0]
     ? event.geometry[0].date
     : null;
@@ -135,10 +136,11 @@ function showEventInfo(event, lat, lng, color) {
   document.getElementById('eventInfo').innerHTML = `
     <div class="card shadow-sm p-3 mb-3">
       <div class="d-flex align-items-center mb-2">
-        <span class="badge me-2" style="background:${color}; font-size:1rem;">
-          ${category}
-        </span>
-        <h5 class="mb-0">${event.title}</h5>
+        <img src="${CATEGORY_ICONS[category]}" alt="${category}" style="width:28px; height:28px; margin-right:10px;">
+        <div>
+          <span class="badge bg-primary mb-1">${category}</span>
+          <h5 class="mb-0">${event.title}</h5>
+        </div>
       </div>
       <p class="mb-1"><strong>Date:</strong> ${dateStr}</p>
       <p class="mb-1"><strong>Coordinates:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
